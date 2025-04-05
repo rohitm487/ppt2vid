@@ -34,7 +34,7 @@ processing_status: Dict[str, ProcessingStatus] = {}
 async def upload_presentation(
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = BackgroundTasks()
-) -> ProcessingStatus:
+) -> JSONResponse:
     """Upload a PowerPoint presentation for processing."""
     if not file.filename.endswith(('.ppt', '.pptx')):
         raise HTTPException(
@@ -55,16 +55,21 @@ async def upload_presentation(
         shutil.copyfileobj(file.file, buffer)
     
     # Initialize processing status
-    processing_status[processing_id] = ProcessingStatus(
+    status = ProcessingStatus(
         status="uploaded",
         message="File uploaded successfully",
         progress=0.0
     )
+    processing_status[processing_id] = status
     
     # Add background task for processing
     background_tasks.add_task(process_presentation, processing_id, file_path)
     
-    return processing_status[processing_id]
+    # Return response with processing ID in headers
+    return JSONResponse(
+        content=status.dict(),
+        headers={"Location": f"/status/{processing_id}"}
+    )
 
 @app.get("/status/{processing_id}", response_model=ProcessingStatus)
 async def get_status(processing_id: str) -> ProcessingStatus:
