@@ -1,0 +1,123 @@
+.file.has-name.is-boxed {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.file-label {
+    width: 100%;
+}
+
+.file-cta {
+    background-color: #f5f5f5;
+    transition: background-color 0.2s ease;
+}
+
+.file-input:hover + .file-cta {
+    background-color: #e8e8e8;
+}
+
+.box {
+    transition: box-shadow 0.2s ease;
+}
+
+.box:hover {
+    box-shadow: 0 2px 15px rgba(10, 10, 10, 0.1);
+}
+
+.progress::-webkit-progress-value {
+    transition: width 0.5s ease;
+}
+
+.button {
+    transition: all 0.2s ease;
+}
+
+.button.is-loading {
+    pointer-events: none;
+}
+
+#scriptContent {
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+.slide-script {
+    border-bottom: 1px solid #e8e8e8;
+    padding-bottom: 1rem;
+}
+
+.slide-script:last-child {
+    border-bottom: none;
+}
+
+.script-textarea {
+    width: 100%;
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+    resize: vertical;
+    min-height: 100px;
+    transition: all 0.2s ease;
+}
+
+.script-textarea:focus {
+    box-shadow: 0 0 0 2px rgba(50, 115, 220, 0.25);
+}
+
+.preview-btn {
+    transition: transform 0.2s ease;
+}
+
+.preview-btn:hover {
+    transform: scale(1.05);
+}
+
+.modal-content img {
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.modal-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.mt-4 {
+    margin-top: 1rem;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    .columns {
+        margin: 0;
+    }
+    
+    .column {
+        padding: 0.5rem;
+    }
+    
+    .file.has-name.is-boxed {
+        max-width: 100%;
+    }
+    
+    .script-textarea {
+        min-height: 80px;
+    }
+    
+    .modal-content {
+        margin: 1rem;
+        max-width: calc(100% - 2rem);
+    }
+} 

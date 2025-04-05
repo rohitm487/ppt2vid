@@ -195,23 +195,13 @@ async def create_video(
     current_user: User = Depends(get_current_user)
 ) -> MessageResponse:
     """Create a video from the processed slides."""
-    if processing_id not in processing_status:
-        raise HTTPException(
-            status_code=404,
-            detail="Processing ID not found"
-        )
-    
-    status = processing_status[processing_id]
-    if status.status != "completed":
-        raise HTTPException(
-            status_code=400,
-            detail="Processing not completed yet"
-        )
-    
     try:
+        print(f"\n=== Starting video creation for {processing_id} ===")
+        
         # Ensure temp directory exists
         temp_dir = Path(f"temp/{processing_id}")
         if not temp_dir.exists():
+            print(f"Error: Directory not found: {temp_dir}")
             raise HTTPException(
                 status_code=404,
                 detail=f"Processing directory not found: {temp_dir}"
@@ -220,31 +210,46 @@ async def create_video(
         # Load data
         result_file = temp_dir / "presentation_script.json"
         if not result_file.exists():
+            print(f"Error: Result file not found: {result_file}")
             raise HTTPException(
                 status_code=404,
                 detail=f"Result file not found: {result_file}"
             )
         
-        # Get user features and limits
-        features = get_user_features(current_user)
-        
         # Create audio directory
         audio_dir = temp_dir / "audio"
         audio_dir.mkdir(exist_ok=True)
         
-        # Generate audio files
-        total_duration = 0
+        # Load and validate presentation data
+        print("Loading presentation data...")
         with result_file.open() as f:
             data = json.load(f)
+        print(f"Loaded data: {json.dumps(data, indent=2)}")
             
         if not data.get('slides'):
+            print("Error: No slides found in data")
             raise HTTPException(
                 status_code=400,
                 detail="No slides found in presentation data"
             )
-            
+
+        # Get list of image files in order
+        slides_dir = temp_dir / "slides"
+        image_files = sorted(slides_dir.glob("*"))
+        print(f"Found image files: {[str(f) for f in image_files]}")
+        
+        if not image_files:
+            print("Error: No image files found")
+            raise HTTPException(
+                status_code=404,
+                detail="No image files found"
+            )
+
+        # First, generate audio for all scripts
+        print("\nGenerating audio for scripts...")
         for i, slide in enumerate(data['slides']):
             if not slide.get('script'):
+                print(f"Error: No script found for slide {i+1}")
                 raise HTTPException(
                     status_code=400,
                     detail=f"No script found for slide {i+1}"
@@ -252,53 +257,69 @@ async def create_video(
                 
             audio_path = audio_dir / f"slide_{i+1}.aiff"
             try:
+                print(f"Converting script {i+1} to speech...")
                 convert_text_to_speech(slide['script'], str(audio_path))
+                if not audio_path.exists():
+                    print(f"Error: Audio file not created for slide {i+1}")
+                    raise Exception(f"Audio file not created for slide {i+1}")
             except Exception as e:
+                print(f"Error generating audio for slide {i+1}: {str(e)}")
                 raise HTTPException(
                     status_code=500,
                     detail=f"Failed to generate audio for slide {i+1}: {str(e)}"
                 )
-                
-            slide['audio_path'] = str(audio_path)
-            
-            # Calculate duration
-            try:
-                audio_clip = AudioFileClip(str(audio_path))
-                total_duration += audio_clip.duration
-                audio_clip.close()
-            except Exception as e:
+
+        # Create presentation data with proper structure for video creation
+        print("\nCreating presentation data structure...")
+        presentation_data = {
+            "title": "presentation",
+            "slides": []
+        }
+
+        # Add slides with image and audio paths
+        for i, (slide, image_file) in enumerate(zip(data['slides'], image_files)):
+            audio_path = audio_dir / f"slide_{i+1}.aiff"
+            if not audio_path.exists():
+                print(f"Error: Audio file missing for slide {i+1}")
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Failed to process audio for slide {i+1}: {str(e)}"
+                    detail=f"Audio file missing for slide {i+1}"
                 )
-            
-            # Check duration limit
-            if total_duration > features['limits']['max_video_duration']:
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Video duration exceeds the limit for your subscription tier ({features['limits']['max_video_duration']} seconds)"
-                )
-        
-        # Save updated data with audio paths
+                
+            slide_data = {
+                "slide_id": i + 1,
+                "image_path": str(image_file.absolute()),
+                "audio_path": str(audio_path.absolute()),
+                "script": slide['script']
+            }
+            presentation_data["slides"].append(slide_data)
+
+        # Save the presentation data with proper structure
+        print("\nSaving presentation data...")
+        print(f"Final presentation data: {json.dumps(presentation_data, indent=2)}")
         with result_file.open('w') as f:
-            json.dump(data, f, indent=2)
+            json.dump(presentation_data, f, indent=2)
         
         # Create video using the standalone function
+        print("\nCreating video...")
         output_path = temp_dir / "video.mp4"
         try:
             create_presentation_video(str(result_file), str(output_path))
         except Exception as e:
+            print(f"Error creating video: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to create video: {str(e)}"
             )
         
         if not output_path.exists():
+            print("Error: Video file was not created")
             raise HTTPException(
                 status_code=500,
                 detail="Video file was not created successfully"
             )
         
+        print("\nVideo created successfully!")
         return MessageResponse(
             message="Video created successfully",
             video_path=f"/temp/{processing_id}/video.mp4"
@@ -337,13 +358,96 @@ async def get_scripts(processing_id: str) -> MessageResponse:
             detail="Result file not found"
         )
     
-    with result_file.open() as f:
-        data = json.load(f)
-    
-    # Extract scripts from slides
-    scripts = [slide.get('script', '') for slide in data.get('slides', [])]
-    
-    return MessageResponse(message="Scripts retrieved successfully", scripts=scripts)
+    try:
+        with result_file.open() as f:
+            data = json.load(f)
+        
+        # Extract scripts from slides
+        if 'slides' in data:
+            scripts = [slide.get('script', '') for slide in data['slides']]
+        else:
+            # Handle legacy format where scripts were stored directly
+            scripts = data.get('scripts', [])
+        
+        return MessageResponse(message="Scripts retrieved successfully", scripts=scripts)
+    except Exception as e:
+        print(f"Error reading scripts: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to read scripts: {str(e)}"
+        )
+
+@app.post("/scripts/{processing_id}", response_model=MessageResponse)
+async def save_scripts(
+    processing_id: str,
+    scripts: List[str],
+    current_user: User = Depends(get_current_user)
+) -> MessageResponse:
+    """Save edited scripts for a presentation."""
+    try:
+        print(f"\n=== Saving scripts for {processing_id} ===")
+        print(f"Received {len(scripts)} scripts")
+        
+        # Check if user has permission to edit scripts
+        if current_user.subscription_tier != SubscriptionTier.PREMIUM and len(scripts) > 5:
+            raise HTTPException(
+                status_code=403,
+                detail="Free tier users can only edit up to 5 slides. Please upgrade to Premium."
+            )
+
+        # Load existing presentation data
+        result_file = Path(f"temp/{processing_id}/presentation_script.json")
+        if not result_file.exists():
+            print(f"Error: Presentation not found at {result_file}")
+            raise HTTPException(status_code=404, detail="Presentation not found")
+
+        # Create slides directory path
+        slides_dir = Path(f"temp/{processing_id}/slides")
+        if not slides_dir.exists():
+            print(f"Error: Slides directory not found at {slides_dir}")
+            raise HTTPException(status_code=404, detail="Slides directory not found")
+
+        # Get list of image files
+        image_files = sorted(slides_dir.glob("*"))
+        if not image_files:
+            print("Error: No image files found")
+            raise HTTPException(status_code=404, detail="No image files found")
+
+        print(f"Found {len(image_files)} image files")
+        
+        # Create presentation data structure
+        presentation_data = {
+            "title": "presentation",
+            "slides": []
+        }
+
+        # Create slides with image paths and scripts
+        for i, (script, image_file) in enumerate(zip(scripts, image_files)):
+            slide_data = {
+                "slide_id": i + 1,
+                "image_path": str(image_file),
+                "script": script
+            }
+            presentation_data["slides"].append(slide_data)
+
+        print(f"Created presentation data with {len(presentation_data['slides'])} slides")
+        print(f"Saving to {result_file}")
+        
+        # Save updated presentation data
+        with result_file.open('w') as f:
+            json.dump(presentation_data, f, indent=2)
+
+        print("Scripts saved successfully")
+        return MessageResponse(message="Scripts updated successfully")
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error saving scripts: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save scripts: {str(e)}"
+        )
 
 @app.put("/scripts/{processing_id}", response_model=MessageResponse)
 @require_feature("custom_scripts")
@@ -751,7 +855,8 @@ async def create_payment_order(
 @app.post("/api/payments/verify-payment")
 async def verify_payment(
     payment_details: dict,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ) -> MessageResponse:
     """Verify payment and upgrade user to premium."""
     try:

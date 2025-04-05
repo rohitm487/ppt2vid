@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 
 @dataclass
@@ -24,7 +24,7 @@ class Slide:
 @dataclass
 class Presentation:
     """Represents a complete PowerPoint presentation."""
-    slides: list[Slide]
+    slides: List[Slide]
     title: str
     output_dir: Path
 

@@ -115,38 +115,44 @@ class AIService:
 
         return self._call_groq_api(messages)
 
-    def generate_script(self, slide: Slide) -> str:
-        """Generate a script for a slide combining OCR text and summary.
+    def generate_script(self, ocr_text: str) -> str:
+        """Generate a lecture-style script from the slide text.
         
         Args:
-            slide: Slide object containing OCR text and summary
+            ocr_text: Extracted text from the slide
             
         Returns:
             Generated script for the slide
         """
-        if not slide.ocr_text or not slide.summary:
-            raise ValueError("OCR text and summary must be available to generate script")
-
         messages = [
             {
+                "role": "system",
+                "content": "You are an expert lecturer who explains complex topics in a clear, engaging, and concise manner. Your speaking style is professional yet conversational, making the content accessible while maintaining academic rigor."
+            },
+            {
                 "role": "user",
-                "content": f"""Create a natural, flowing script for this slide based on the following information. The script should be written as pure spoken content, without any narration markers, pauses, sound effects, or scene directions:
+                "content": f"""Create a natural, lecture-style script for this slide content. The script should sound like a professor explaining the concepts to students:
 
-OCR Text:
-{slide.ocr_text}
+Slide Content:
+{ocr_text}
 
-Image Summary:
-{slide.summary}
+Requirements:
+1. Write as if you're giving a live lecture to students
+2. Start with a clear explanation of the main concept
+3. Use a professional but conversational tone
+4. Include brief examples or analogies where appropriate
+5. Keep explanations concise but thorough
+6. Connect ideas logically
+7. Avoid filler words or unnecessary repetition
+8. End with a clear conclusion or transition
+9. Maximum length: 2-3 sentences for simple slides, 4-5 for complex ones
+10. Focus on explaining 'why' and 'how', not just 'what'
 
-The script should:
-1. Flow naturally as spoken content
-2. Maintain a professional tone
-3. Combine the text and visual information seamlessly
-4. Highlight key points effectively
-5. Provide smooth transitions between topics
-6. Exclude any narration markers (e.g., no "Narrator:", "(pause)", "[Scene:]", etc.)
-7. Exclude any sound effects or music cues
-8. Focus purely on what would be spoken"""
+Format:
+- Write only the spoken content
+- No narration markers, pauses, or directions
+- No introductory phrases like "In this slide..." or "Let's look at..."
+- Start directly with the explanation"""
             }
         ]
 
