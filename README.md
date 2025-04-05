@@ -9,6 +9,7 @@ A Python application that converts PowerPoint presentations into detailed video 
 - Generate image summaries
 - Create coherent video scripts
 - Maintain slide order and context
+- REST API for easy integration
 
 ## Installation
 
@@ -36,14 +37,69 @@ GROQ_API_KEY=your_api_key_here
 
 ## Usage
 
+### Command Line Interface
+
 ```bash
-python -m ppt2vid.core.main presentation.pptx
+python -m ppt2vid.core.main path/to/your/presentation.pptx
+```
+
+### REST API
+
+1. Start the API server:
+```bash
+python run.py
+```
+
+2. The API will be available at `http://localhost:8000`
+
+3. API Endpoints:
+
+- **Upload Presentation**
+  ```
+  POST /upload
+  Content-Type: multipart/form-data
+  Body: file (PowerPoint file)
+  Response: ProcessingStatus
+  ```
+
+- **Check Processing Status**
+  ```
+  GET /status/{processing_id}
+  Response: ProcessingStatus
+  ```
+
+- **Get Results**
+  ```
+  GET /result/{processing_id}
+  Response: PresentationResponse
+  ```
+
+4. Example API Usage:
+
+```python
+import requests
+
+# Upload presentation
+with open("presentation.pptx", "rb") as f:
+    response = requests.post(
+        "http://localhost:8000/upload",
+        files={"file": f}
+    )
+processing_id = response.json()["processing_id"]
+
+# Check status
+status = requests.get(f"http://localhost:8000/status/{processing_id}").json()
+
+# Get results when processing is complete
+if status["status"] == "completed":
+    results = requests.get(f"http://localhost:8000/result/{processing_id}").json()
 ```
 
 ## Project Structure
 
 ```
 ppt2vid/
+├── api/            # FastAPI application
 ├── core/           # Core functionality
 ├── utils/          # Utility functions
 ├── models/         # Data models
@@ -58,4 +114,8 @@ ppt2vid/
 - Write docstrings for all functions
 - Run tests before committing
 - Use meaningful commit messages
+
+## License
+
+MIT License
 
