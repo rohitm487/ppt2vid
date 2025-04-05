@@ -33,6 +33,11 @@ audio/
 *.mp4
 temp_list.txt
 get-pip.py
+*.db
+ppt2vid.db
+*.pptx
+presentation_results.json
+upgrade_requests/
 
 # Virtual Environment
 build/
@@ -54,4 +59,11 @@ wheels/
 # Test coverage
 .coverage
 htmlcov/
-.pytest_cache/ 
+.pytest_cache/
+
+# Sensitive files
+client_secret*.json
+*client_secret*.json
+*.key
+*.pem
+*.env 
