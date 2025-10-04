@@ -23,7 +23,7 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(
 security = HTTPBearer()
 
 # JWT Configuration
-SECRET_KEY = "your-secret-key"  # In production, use a secure secret key from environment variables
+SECRET_KEY = "XXXXXX"
 ALGORITHM = "HS256"
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
