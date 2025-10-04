@@ -32,7 +32,7 @@ pip install -r requirements.txt
 
 4. Create a `.env` file with your Groq API key:
 ```
-GROQ_API_KEY=your_api_key_here
+GROQ_API_KEY=api_key
 ```
 
 ## Usage
@@ -40,7 +40,7 @@ GROQ_API_KEY=your_api_key_here
 ### Command Line Interface
 
 ```bash
-python -m ppt2vid.core.main path/to/your/presentation.pptx
+python -m ppt2vid.core.main presentation.pptx
 ```
 
 ### REST API
